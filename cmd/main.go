@@ -1,13 +1,19 @@
 package main
 
 import (
-	rcon "github.com/dvher/mcconbot/pkg"
+	"log"
+	"os"
+	"os/signal"
+
+	"github.com/dvher/mcconbot/pkg/discord"
 )
 
 func main() {
-	conn := rcon.NewConnection("127.0.0.1", 25575, "Dvher2510%.")
+	defer discord.Sess.Close()
 
-	conn.SendCommand("list")
-
-	defer conn.Close()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	log.Println("Press Ctrl-C to exit")
+	<-stop
+	log.Println("Shutting down...")
 }

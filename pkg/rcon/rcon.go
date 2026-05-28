@@ -2,11 +2,21 @@ package rcon
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math/rand"
 	"net"
+	"os"
+
+	_ "github.com/joho/godotenv/autoload"
+)
+
+var (
+	ip       = os.Getenv("SERVER_IP")
+	port     = os.Getenv("SERVER_PORT")
+	password = os.Getenv("SERVER_PASSWORD")
 )
 
 var padding [2]byte = [2]byte{0, 0}
@@ -28,14 +38,14 @@ type Payload struct {
 
 type Connection struct {
 	ip       string
-	port     int
+	port     string
 	password string
 	conn     net.Conn
 }
 
-func NewConnection(ip string, port int, password string) *Connection {
-	if port == 0 {
-		port = 25575
+func NewConnection() (*Connection, error) {
+	if port == "" {
+		port = "25575"
 	}
 
 	conn := &Connection{
@@ -44,12 +54,12 @@ func NewConnection(ip string, port int, password string) *Connection {
 		password: password,
 	}
 
-	conn.Connect()
+	err := conn.Connect()
 
-	return conn
+	return conn, err
 }
 
-func (c *Connection) SendCommand(command string) error {
+func (c *Connection) SendCommand(command string) (*Payload, error) {
 	payload := Payload{
 		Type:      commandType,
 		Payload:   []byte(command),
@@ -63,12 +73,10 @@ func (c *Connection) SendCommand(command string) error {
 
 	if err != nil {
 		log.Println(err)
-		return err
+		return nil, err
 	}
 
-	log.Println("Response", string(response.Payload))
-
-	return nil
+	return response, nil
 }
 
 func (c *Connection) send(p Payload) (*Payload, error) {
@@ -102,9 +110,6 @@ func (c *Connection) send(p Payload) (*Payload, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	log.Println(data)
-	log.Println(p.Length)
 
 	_, err = c.conn.Write(data)
 
@@ -163,11 +168,12 @@ func (c *Connection) read() (*Payload, error) {
 
 }
 
-func (c *Connection) Connect() {
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", c.ip, c.port))
+func (c *Connection) Connect() error {
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%s", c.ip, c.port))
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
+		return err
 	}
 
 	c.conn = conn
@@ -181,26 +187,22 @@ func (c *Connection) Connect() {
 
 	payload.Length = payload.Size()
 
-	response, err := c.send(payload)
+	_, err = c.send(payload)
 
 	if err != nil {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 
-	log.Println(string(response.Payload))
+	return err
 }
 
-func (c *Connection) Close() {
+func (c *Connection) Close() error {
 
 	if c.conn == nil {
-		return
+		return errors.New("Cannot close nil connection")
 	}
 
-	err := c.conn.Close()
-
-	if err != nil {
-		log.Fatalln(err)
-	}
+	return c.conn.Close()
 }
 
 func (p Payload) Size() int32 {
