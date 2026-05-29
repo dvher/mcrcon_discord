@@ -19,18 +19,24 @@ var RegisteredCommands []*discordgo.ApplicationCommand
 
 func init() {
 	var err error
-	Sess, err = discordgo.New(BotToken)
+	Sess, err = discordgo.New("Bot " + BotToken)
 
 	if err != nil {
 		log.Fatalln("Invalid bot token")
+	}
+}
+
+func init() {
+	err := Sess.Open()
+
+	if err != nil {
+		log.Fatalln("Could not open discord session")
 	}
 
 	if RemoveCommands {
 		removeCommands()
 	}
-}
 
-func init() {
 	Sess.AddHandler(func(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if h, ok := handlers[i.ApplicationCommandData().Name]; ok {
 			h(s, i)

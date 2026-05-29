@@ -3,6 +3,8 @@ package discord
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/dvher/mcconbot/pkg/rcon"
@@ -23,6 +25,26 @@ func handleStart(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: "There's no defined command for starting the server!",
+			},
+		})
+		return
+	}
+
+	commandArgs := strings.Split(command, " ")
+
+	if len(commandArgs) == 1 {
+		commandArgs = []string{commandArgs[0], ""}
+	}
+
+	cmd := exec.Command(commandArgs[0], commandArgs[1:]...)
+
+	err := cmd.Run()
+
+	if err != nil {
+		s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("Cannot run command %v", command),
 			},
 		})
 		return
